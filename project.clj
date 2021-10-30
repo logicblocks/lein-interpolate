@@ -5,6 +5,8 @@
   :license {:name "The MIT License"
             :url  "https://opensource.org/licenses/MIT"}
 
+  :plugins [[lein-shell "0.5.0"]]
+
   :deploy-repositories
   {"releases"  {:url "https://repo.clojars.org" :creds :gpg}
    "snapshots" {:url "https://repo.clojars.org" :creds :gpg}}
