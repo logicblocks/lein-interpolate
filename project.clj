@@ -1,4 +1,4 @@
-(defproject io.logicblocks/lein-interpolate "0.1.1-SNAPSHOT"
+(defproject io.logicblocks/lein-interpolate "0.1.1-RC1"
   :description "A leiningen plugin for interpolating into the project map."
   :url "https://github.com/logicblocks/lein-interpolate"
 

@@ -1,17 +1,18 @@
 (ns lein-interpolate.plugin
   (:require
-    [clojure.pprint :as pprint]
     [clojure.walk :as walk]))
 
 (defn interpolate-tokens [project]
-  (let [version (:version project)]
-    (walk/postwalk
-      (fn [node]
-        (if (= node :project/version)
-          version
-          node))
-      project)))
+  (walk/postwalk
+    (fn [node]
+      (if (keyword? node)
+        (let [kns (keyword (namespace node))
+              k (keyword (name node))]
+          (if (= kns :project)
+            (k project)
+            node))
+        node))
+    project))
 
 (defn middleware [project]
-  (pprint/pprint project)
   (interpolate-tokens project))
