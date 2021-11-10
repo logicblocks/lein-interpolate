@@ -12,9 +12,17 @@
               (let [kns (keyword (namespace node))
                     k (keyword (name node))]
                 (cond
-                  (= kns :project) (k project)
-                  (contains? interpolations node) (node interpolations)
-                  :else node))
+                  (= kns :project)
+                  (k project)
+
+                  (contains? interpolations node)
+                  (let [interpolation (node interpolations)]
+                    (if (fn? interpolation)
+                      (interpolation project)
+                      interpolation))
+
+                  :else
+                  node))
               node))
           interpolatable-project)]
     (merge interpolated-project
