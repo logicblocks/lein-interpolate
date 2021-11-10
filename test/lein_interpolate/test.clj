@@ -47,3 +47,22 @@
     (let [aliases (get project :aliases)
           alias (get aliases :tweet)]
       (is (= ["tweet" ":group" group ":description" description] alias)))))
+
+(deftest interpolates-custom-interpolations-when-referenced
+  (let [project (read-project :custom-interpolations)
+        interpolations (:interpolations project)
+        version (:custom/version interpolations)
+        path (:custom/path interpolations)
+        arg (:custom/arg interpolations)]
+
+    (let [dependencies (get project :dependencies)
+          dependency (find-dependency dependencies 'thing.core/thing.core)]
+      (is (= version (dependency-version dependency))))
+
+    (let [profiles (get project :profiles)
+          profile (get profiles :test)]
+      (is (= path (:thing-path profile))))
+
+    (let [aliases (get project :aliases)
+          alias (get aliases :tweet)]
+      (is (= ["tweet" ":arg" arg] alias)))))
