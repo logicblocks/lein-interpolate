@@ -11,7 +11,7 @@ GEM
       public_suffix (>= 2.0.2, < 5.0)
     colored2 (3.1.2)
     concurrent-ruby (1.1.9)
-    excon (0.88.0)
+    excon (0.89.0)
     faraday (1.8.0)
       faraday-em_http (~> 1.0)
       faraday-em_synchrony (~> 1.0)
@@ -95,6 +95,7 @@ GEM
 
 PLATFORMS
   x86_64-darwin-20
+  x86_64-linux
 
 DEPENDENCIES
   rake (~> 13.0)
@@ -105,4 +106,4 @@ DEPENDENCIES
   rake_ssh (~> 0.4)
 
 BUNDLED WITH
-   2.2.32
+   2.2.33
