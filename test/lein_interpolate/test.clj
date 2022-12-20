@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [clojure.java.io :as io]
-   [clojure.string :as string]
 
    [leiningen.core.project :as project]
 
@@ -108,7 +107,7 @@
   (with-temporary-project
     [project-path
      '(defproject function-interpolations "0.1.0"
-        :url "https://test.example.com/custom-interpolations"
+        :url "https://test.example.com/function-interpolations"
         :description "Testing functions as interpolations"
 
         :interpolations
@@ -133,3 +132,22 @@
       (let [profiles (get project :profiles)
             profile (get profiles :test)]
         (is (= (path project) (:thing-path profile)))))))
+
+(deftest resolves-interpolation-dependencies
+  (with-temporary-project
+    [project-path
+     '(defproject interpolation-dependencies "0.1.0"
+        :url "https://test.example.com/interpolation-dependencies"
+        :description "Testing dependencies between interpolations"
+
+        :interpolations
+        {:custom/value "a3b4cd"}
+
+        :dependency-thing :custom/value
+
+        :dependencies [[thing.core :project/dependency-thing]])]
+    (let [project (read-project project-path)
+          value (get-in project [:interpolations :custom/value])]
+      (let [dependencies (get project :dependencies)
+            dependency (find-dependency dependencies 'thing.core/thing.core)]
+        (is (= value (dependency-version dependency)))))))

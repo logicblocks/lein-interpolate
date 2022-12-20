@@ -94,6 +94,7 @@ GEM
     zeitwerk (2.5.1)
 
 PLATFORMS
+  arm64-darwin-21
   x86_64-darwin-20
   x86_64-linux
 
@@ -106,4 +107,4 @@ DEPENDENCIES
   rake_ssh (~> 0.4)
 
 BUNDLED WITH
-   2.2.33
+   2.3.26
