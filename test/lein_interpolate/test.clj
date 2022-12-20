@@ -1,17 +1,21 @@
 (ns lein-interpolate.test
   (:require
    [clojure.test :refer :all]
-   [clojure.string :as string]
+   [clojure.java.io :as io]
 
    [leiningen.core.project :as project]
 
-   [lein-interpolate.plugin :as plugin]))
+   [lein-interpolate.plugin :as plugin])
+  (:import
+   [java.io File Writer]))
 
-(defn snake-case [value]
-  (string/replace value "-" "_"))
-
-(defn project-path [project-name]
-  (str "./dev-resources/" (snake-case (name project-name)) "/project.clj"))
+(defmacro with-temporary-project [binding & body]
+  `(let [project# (File/createTempFile "project" ".clj")
+         ~(first binding) (.getAbsolutePath project#)]
+     (.deleteOnExit project#)
+     (with-open [writer# (io/writer project#)]
+       (.write ^Writer writer# ^String (str ~(second binding))))
+     ~@body))
 
 (def dependency-id first)
 (def dependency-version second)
@@ -23,60 +27,127 @@
         (= id (dependency-id dependency)))
       dependencies)))
 
-(defn read-project [project-name]
-  (-> project-name
-    project-path
+(defn read-project [project-path]
+  (-> project-path
     project/read
     plugin/middleware))
 
 (deftest interpolates-project-attributes-when-referenced
-  (let [project (read-project :project-attributes)
-        version (:version project)
-        root (:root project)
-        group (:group project)
-        description (:description project)]
+  (with-temporary-project
+    [project-path
+     '(defproject project-attributes "0.1.0"
+        :url "https://test.example.com/project-attributes"
+        :description "Testing basic project attribute interpolation"
 
-    (let [dependencies (get project :dependencies)
-          dependency (find-dependency dependencies 'thing.core/thing.core)]
-      (is (= version (dependency-version dependency))))
+        :dependencies [[thing.core :project/version]]
 
-    (let [profiles (get project :profiles)
-          profile (get profiles :test)]
-      (is (= root (:thing-path profile))))
+        :profiles
+        {:test {:thing-path :project/root}}
 
-    (let [aliases (get project :aliases)
-          alias (get aliases :tweet)]
-      (is (= ["tweet" ":group" group ":description" description] alias)))))
+        :aliases {:tweet
+                  ["tweet"
+                   ":group" :project/group
+                   ":description" :project/description]})]
+    (let [project (read-project project-path)
+          version (:version project)
+          root (:root project)
+          group (:group project)
+          description (:description project)]
+
+      (let [dependencies (get project :dependencies)
+            dependency (find-dependency dependencies 'thing.core/thing.core)]
+        (is (= version (dependency-version dependency))))
+
+      (let [profiles (get project :profiles)
+            profile (get profiles :test)]
+        (is (= root (:thing-path profile))))
+
+      (let [aliases (get project :aliases)
+            alias (get aliases :tweet)]
+        (is (= ["tweet" ":group" group ":description" description] alias))))))
 
 (deftest interpolates-custom-interpolations-when-referenced
-  (let [project (read-project :custom-interpolations)
-        interpolations (:interpolations project)
-        version (:custom/version interpolations)
-        path (:custom/path interpolations)
-        arg (:custom/arg interpolations)]
+  (with-temporary-project
+    [project-path
+     '(defproject custom-interpolations "0.1.0"
+        :url "https://test.example.com/custom-interpolations"
+        :description "Testing custom interpolations"
 
-    (let [dependencies (get project :dependencies)
-          dependency (find-dependency dependencies 'thing.core/thing.core)]
-      (is (= version (dependency-version dependency))))
+        :interpolations {:custom/path    "some/custom/path"
+                         :custom/version "1.2.3"
+                         :custom/arg     "some-arg"}
 
-    (let [profiles (get project :profiles)
-          profile (get profiles :test)]
-      (is (= path (:thing-path profile))))
+        :dependencies [[thing.core :custom/version]]
 
-    (let [aliases (get project :aliases)
-          alias (get aliases :tweet)]
-      (is (= ["tweet" ":arg" arg] alias)))))
+        :profiles
+        {:test {:thing-path :custom/path}}
+
+        :aliases {:tweet
+                  ["tweet"
+                   ":arg" :custom/arg]})]
+    (let [project (read-project project-path)
+          interpolations (:interpolations project)
+          version (:custom/version interpolations)
+          path (:custom/path interpolations)
+          arg (:custom/arg interpolations)]
+
+      (let [dependencies (get project :dependencies)
+            dependency (find-dependency dependencies 'thing.core/thing.core)]
+        (is (= version (dependency-version dependency))))
+
+      (let [profiles (get project :profiles)
+            profile (get profiles :test)]
+        (is (= path (:thing-path profile))))
+
+      (let [aliases (get project :aliases)
+            alias (get aliases :tweet)]
+        (is (= ["tweet" ":arg" arg] alias))))))
 
 (deftest allows-interpolation-values-to-be-functions-of-project
-  (let [project (read-project :function-interpolations)
-        interpolations (:interpolations project)
-        version (:custom/version interpolations)
-        path (:custom/path interpolations)]
+  (with-temporary-project
+    [project-path
+     '(defproject function-interpolations "0.1.0"
+        :url "https://test.example.com/function-interpolations"
+        :description "Testing functions as interpolations"
 
-    (let [dependencies (get project :dependencies)
-          dependency (find-dependency dependencies 'thing.core/thing.core)]
-      (is (= (version project) (dependency-version dependency))))
+        :interpolations
+        {:custom/path    ~(fn [project]
+                            (str (:root project) "/some/custom/path"))
+         :custom/version ~(fn [project]
+                            (str (:version project) "-RC1"))}
 
-    (let [profiles (get project :profiles)
-          profile (get profiles :test)]
-      (is (= (path project) (:thing-path profile))))))
+        :dependencies [[thing.core :custom/version]]
+
+        :profiles
+        {:test {:thing-path :custom/path}})]
+    (let [project (read-project project-path)
+          interpolations (:interpolations project)
+          version (:custom/version interpolations)
+          path (:custom/path interpolations)]
+
+      (let [dependencies (get project :dependencies)
+            dependency (find-dependency dependencies 'thing.core/thing.core)]
+        (is (= (version project) (dependency-version dependency))))
+
+      (let [profiles (get project :profiles)
+            profile (get profiles :test)]
+        (is (= (path project) (:thing-path profile)))))))
+
+(deftest resolves-interpolation-dependencies
+  (with-temporary-project
+    [project-path
+     '(defproject interpolation-dependencies "0.1.0"
+        :url "https://test.example.com/interpolation-dependencies"
+        :description "Testing dependencies between interpolations"
+
+        :interpolations
+        {:custom/value "a3b4cd"}
+
+        :dependency-thing :custom/value
+
+        :dependencies [[thing.core :project/dependency-thing]])]
+    (let [project (read-project project-path)
+          value (get-in project [:interpolations :custom/value])]
+      (let [dependencies (get project :dependencies)
+            dependency (find-dependency dependencies 'thing.core/thing.core)]
+        (is (= value (dependency-version dependency)))))))
