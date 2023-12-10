@@ -5,32 +5,37 @@
   :license {:name "The MIT License"
             :url  "https://opensource.org/licenses/MIT"}
 
-  :plugins [[fipp "0.6.24"]
-            [lein-cloverage "1.1.2"]
+  :plugins [[fipp "0.6.26"]
+            [lein-cloverage "1.2.4"]
             [lein-shell "0.5.0"]
-            [lein-ancient "0.6.15"]
+            [lein-ancient "0.7.0"]
             [lein-changelog "0.3.2"]
             [lein-cprint "1.3.3"]
-            [lein-eftest "0.5.9"]
-            [lein-codox "0.10.7"]
-            [lein-cljfmt "0.6.7"]
+            [lein-eftest "0.6.0"]
+            [lein-codox "0.10.8"]
+            [lein-cljfmt "0.9.2"]
             [lein-kibit "0.1.8"]
             [lein-bikeshed "0.5.2"]
-            [jonase/eastwood "0.3.11"]]
+            [jonase/eastwood "1.4.0"]]
 
   :eval-in-leiningen true
 
   :profiles
   {:shared
-   {:dependencies   [[org.clojure/clojure "1.10.3"]
+   ^{:pom-scope :test}
+   {:dependencies   [[org.clojure/clojure "1.11.1"]
 
-                     [nrepl "0.8.3"]
-                     [eftest "0.5.9"]]
+                     [nrepl "1.1.0"]
+                     [eftest "0.6.0"]]
     :resource-paths ["test-resources"]}
+
    :dev
-   [:shared {:eftest {:multithread? false}}]
+   [:shared {:source-paths ["dev"]
+             :eftest       {:multithread? false}}]
+
    :test
    [:shared {:eftest {:multithread? false}}]
+
    :prerelease
    {:release-tasks
     [["shell" "git" "diff" "--exit-code"]
@@ -39,6 +44,7 @@
      ["vcs" "commit" "Pre-release version %s [skip ci]"]
      ["vcs" "tag"]
      ["deploy"]]}
+
    :release
    {:release-tasks
     [["shell" "git" "diff" "--exit-code"]
@@ -72,7 +78,8 @@
 
   :cljfmt {:indents ^:replace {#".*" [[:inner 0]]}}
 
-  :eastwood {:config-files ["config/linter.clj"]}
+  :eastwood {:config-files ["config/linter.clj"]
+             :exclude-namespaces [user]}
 
   :deploy-repositories
   {"releases"  {:url "https://repo.clojars.org" :creds :gpg}
